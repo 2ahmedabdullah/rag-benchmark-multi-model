@@ -1,16 +1,19 @@
-# Zero-Shot RAG Evaluation: Benchmarking Dense, Approximate, and Hybrid Search on BEIR SciFact
+# Zero-Shot Retriever Evaluation: Benchmarking Dense, Approximate, and Hybrid Search on BEIR SciFact
 
-This repository houses a production-grade, empirical benchmarking framework evaluating five information retrieval (IR) strategies across six state-of-the-art dense embedding models. Engineered specifically for optimizing Retrieval-Augmented Generation (RAG) systems, this pipeline explicitly analyzes the mathematical tradeoffs between search accuracy (precision, recall, positional ranking) and computational hardware costs (raw inference overhead vs. real-time query latencies).
+This repository houses an empirical benchmarking framework evaluating five information retrieval (IR) strategies across six state-of-the-art dense embedding models. Engineered specifically for optimizing Retrieval-Augmented Generation (RAG) systems, this pipeline explicitly analyzes the mathematical tradeoffs between search accuracy (precision, recall, positional ranking) and computational hardware costs (raw inference overhead vs. real-time query latencies).
 
 ---
 
 ## 🔬 Project Context: Why BEIR SciFact?
 
-The **BEIR (Benchmarking Information Retrieval)** suite is the global standard for evaluating how well search engines and AI models perform *outside* of their training data (known as zero-shot evaluation). 
+This pipeline uses the SciFact dataset from the BEIR suite to run out-of-domain evaluation.
 
-This framework utilizes the **SciFact** dataset, which consists of **300 expert-written scientific claims** that must be verified against a corpus of **5,183 scientific abstracts from PubMed**. Because medical literature is dense with highly specialized terminology, it serves as the ultimate stress test for vector embedding spaces and keyword-matching engines alike.
+Corpus: 5,183 scientific abstracts (PubMed)
 
-In a production RAG pipeline, if your retriever fails to surface the exact ground-truth document within its top results, the downstream Large Language Model (LLM) will confidently hallucinate an incorrect response. This project benchmarks four algorithmic approaches to maximize retrieval accuracy, minimize latency, and optimize context quality at Rank Cutoff 10 (`@10`).
+Queries: 300 expert-written claims
+
+
+Why this matters for RAG: Specialized medical jargon breaks weak semantic spaces. If a retriever cannot surface relevant documents within the top results, the downstream LLM lacks the context to generate accurate answers. We measure 5 distinct search tracks at @10 to find the exact point where retrieval quality meets hardware efficiency.
 
 ---
 
@@ -18,6 +21,12 @@ In a production RAG pipeline, if your retriever fails to surface the exact groun
 
 
 The master framework concurrently tracks **25 unique system pipelines** (1 standalone lexical baseline + 4 functional search strategies across 6 core neural network architectures), mapping performance metrics side-by-side with localized runtime analytics.
+
+1) BM25 Lexicon
+2) Brute Force Search
+3) ANN (Approximate Nearest Neighbours) Search
+4) HNSW Search
+5) Hybrid (HNSW + BM25) Search
 
 
 ## 📊 Evaluation Results Summary
@@ -58,40 +67,28 @@ Our evaluation pipeline dynamically compiled 7,500 distinct document predictions
 
 ## 💡 Key Engineering Takeaways
 
-### 1. The Production Pareto Frontier: BGE-Base Wins
-When engineering real-world RAG systems, the goal is to optimize the trade-off between retrieval accuracy and infrastructure costs.
-* **The Trade-off:** `BGE-Large-v1.5` achieves the highest overall accuracy (`0.7499 NDCG@10`), but it comes with a massive penalty: **86.45ms** search latency and a brutal **2,734-second** (45+ mins) corpus indexing overhead.
-* **The Winner:** `BGE-Base-v1.5` achieves nearly identical retrieval accuracy (`0.7458 NDCG@10` via HNSW) while delivering a **3x reduction in search latency (29.05ms)** and saving **72% on indexing time**. For production workloads, BGE-Base is the clear Pareto-optimal choice.
+### 1. Model Selection & Efficiency (BGE-Base vs. BGE-Large)
+
+While BGE-Large-v1.5 yields the highest raw accuracy (0.7499 NDCG@10), it introduces an unnecessary trade-off in this environment. BGE-Base-v1.5 achieves nearly identical accuracy (0.7458 NDCG@10 via HNSW) while delivering a 3x reduction in query latency (29.05ms) and saving significantly on localized corpus setup overhead. For production pipelines, base-sized models represent the optimal performance-to-compute threshold.
+
 
 ### 2. The Hybrid Fusion Paradox (RRF Dilution)
-A common assumption in early RAG development is that combining Keyword (BM25) and Vector search via Reciprocal Rank Fusion (RRF) always improves performance. This dataset proves that **Hybrid search can act as an accuracy equalizer or an accuracy dilutor**:
-* **The Equalizer:** For older, weaker embedding spaces like `DistilBERT`, adding BM25 dramatically raised performance (NDCG jumped from `0.5405` to `0.6031`) because keyword matching rescued missing semantic context.
-* **The Dilutor:** For highly optimized, state-of-the-art models like `BGE` and `E5`, their standalone semantic capabilities are vastly superior to BM25 (`0.74` vs `0.56` NDCG). Forcing RRF to merge their pristine vector spaces with lower-ranked keyword results actually **diluted top-tier placements**, pulling the final scores down. 
 
-### 3. Near-Zero Loss with Approximate Nearest Neighbor (ANN)
-Scaling brute-force vector search ($O(N)$ complexity) to millions of documents is computationally impossible at scale. This project successfully benchmarked `IndexHNSWFlat` (Hierarchical Navigable Small World graphs) to prove horizontal scalability:
-* Across all 6 tested embedding models, **HNSW graph routing preserved near-perfect mathematical fidelity** to brute force calculations.
-* In the case of `BGE-Base`, HNSW matched Brute Force precisely at `0.7458 NDCG@10` and `0.8833 Recall@10`, validating that you can confidently swap to graph-based approximate indices in production without sacrificing retrieval quality.
+Combining keyword matching (BM25) and vector search via Reciprocal Rank Fusion (RRF) does not universally guarantee better results:
 
-### 4. Embedding Super-Families vs. Legacy Models
-There is a massive generational divide in retrieval capability. Modern models explicitly fine-tuned on massive text-retrieval datasets (`BGE`, `E5`) vastly outperformed general-purpose legacy encoders:
-* Standalone `BGE-Base` achieved a **0.99 Hit Rate**, whereas `DistilBERT` struggled at a **0.73 Hit Rate**.
-* This demonstrates that selecting a model architectures with dense, pre-trained semantic alignment for search (like the BEIR benchmark suite) matters far more than simply scale or vector dimensionality alone.
+The Upgrade: For weaker, legacy semantic spaces like DistilBERT, hybrid fusion significantly elevated performance (NDCG rose from 0.5405 to 0.6031) by anchoring the search to exact medical keyword matches.
 
+The Dilution: For highly optimized retrieval models (BGE, E5), standalone semantic capabilities are vastly superior to pure lexical matching (0.74 vs 0.56 NDCG). Forcing RRF to merge pristine semantic vectors with lower-ranked keyword results introduces noise, pulling down the top-tier rankings.
 
-### 📈 Core Engineering Insights
+### 3. Approximate Nearest Neighbor (ANN) Fidelity
 
-1. **The Production Pareto Frontier (BGE-Base-v1.5 wins):** While `BGE-Large-v1.5` achieves the maximum theoretical accuracy (`NDCG@10 = 0.7499`), it scales search latency up to **86.45ms** and introduces a massive **2,734 second (45+ minute)** corpus setup overhead. `BGE-Base-v1.5` delivers effectively identical performance (`NDCG@10 = 0.7458`) at a **3x faster query speed (29.05ms)** and a fraction of the hardware setup cost, marking it as the ideal choice for real-world deployments.
-2. **The Hybrid Dilution Effect:** Reciprocal Rank Fusion (RRF) acts as an architectural equalizer. While it dramatically improves weaker embedding spaces (boosting DistilBERT from `0.5405` to `0.6031`), it dilutes modern out-of-domain models like BGE and E5, dragging down their pristine semantic placements with lower-ranked lexical noise.
-3. **Flawless Vector HNSW Approximations:** Across all architectures, the graph routing logic in `IndexHNSWFlat` retained full mathematical accuracy compared to Brute Force checks, validating its capability to scale to massive production databases without losing search quality.
+At a production scale, brute-force vector search ($O(N)$ complexity) becomes unviable. Benchmarking FAISS’s IndexHNSWFlat configuration demonstrates that approximate index graphs preserve near-perfect mathematical fidelity to exact brute-force calculations. For instance, BGE-Base on HNSW matched exact Brute Force precisely at 0.7458 NDCG@10, confirming that approximate index strategies can be deployed without degrading retrieval quality.
+
+### 4. Generational Gap in Embeddings
+
+The data highlights a sharp divide between generic text encoders and models explicitly fine-tuned on asymmetric text-retrieval tasks. Specialized search models (BGE, E5) vastly outperformed general-purpose legacy models—standalone BGE-Base achieved a 0.99 Hit Rate compared to DistilBERT at 0.73, proving that structural retrieval pre-training matters far more than raw vector dimensionality.
 
 
-### 📈 Core Engineering Insights
-1. **The Domain-Specific Vector Deficit:** Standalone keyword matching (`BM25`) outperformed pure semantic vector spaces (`Brute Force`/`HNSW`) across all metrics. This highlights a classic vector deficit where general-purpose dense models experience vocabulary drift when handling exact medical terms, genes, and chemical mutations.
-2. **The Power of Multi-Engine Fusion:** While BM25 proved strong, combining it with structural semantic vectors via the **Hybrid** track generated our peak performance. It reclaimed obscured context documents, driving **Recall@10** to **72%** and **NDCG@10** to an exceptional **0.6122**.
-3. **Flawless HNSW Graph Navigation:** The native `IndexHNSWFlat` configuration successfully mirrored (and slightly optimized via floating-point tie-breaking) the retrieval accuracy of Brute Force while fundamentally reducing production search times to sub-millisecond ranges.
-
----
 
 ## 🛠️ System Architecture & Search Tracks
 
@@ -123,13 +120,6 @@ We truncate all metrics strictly to the Top 10 results (`@10`) because it matche
 * **MRR@10 & NDCG@10 (Sorting Quality Metrics):** Tracks positional accuracy. LLMs suffer from "lost-in-the-middle" bias and pay the closest attention to information at the absolute top of their prompt window. High MRR and NDCG verify that the strongest evidence is consistently delivered at **Rank 1 or Rank 2**.
 
 
-## 💾 Optimization & Compatibility Layer
-
-* **Embedding Cache Layer:** Bypasses repetitive encoding iterations by utilizing a local `.npy` vector cache system (`./results/faiss_cache`). If text documents have already been mapped into vector space, they are reloaded into RAM instantly.
-* **NumPy 2.0+ Migration Fix:** The statistical evaluation loop is fully decoupled from deprecated legacy code. The metric math engines replace the removed `np.asfarray` functions with explicit type-safe `np.asarray(r, dtype=float)` interfaces.
-* **Unified DataFrame Packaging:** Implements type-safe serialization protection via `get_predictions_dataframe` to seamlessly handle discrepancies between string keys (`BM25`/`BEIR`) and localized FAISS integer indexing arrays.
-
----
 
 ## 📂 Project Directory Structure
 
