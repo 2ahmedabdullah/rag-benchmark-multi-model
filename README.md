@@ -44,6 +44,24 @@ The author deliberately selected 6 models representing three distinct architectu
 | **Neural Contrastive** | `facebook/contriever-msmarco` | 768 | 110M | Unsupervised/Continuous Pre-trained |
 
 
+1. The Legacy Control: DistilBERT-v4
+
+Why: It serves as our historical benchmark. Trained during the early waves of dense text retrieval on the MS-MARCO dataset, it lacks modern contrastive training advancements and instruction tuning. Including it demonstrates exactly how much retrieval technology has progressed over the last few years.
+
+2. The Asymmetric Giants: BGE (Base vs. Large)
+
+Why: BAAI's BGE family introduces explicit task instructions (e.g., prepending query formatting strings). This allows the model to alter its vector mapping properties depending on whether it is processing a short search query or a long abstract.
+
+The Scale Test: By evaluating both base and large, we explicitly test whether jumping from 110 million parameters to 326 million parameters yields enough of an accuracy boost to justify the dramatic surge in indexing and hardware costs.
+
+3. The Prefix Enforcers: E5 (Base vs. Large)
+
+Why: The E5 family utilizes a unique training format requiring strict structural prefixes (query:  and passage: ). It enforces an explicit geometric separation in the latent space between user intent and corpus data. Testing E5 directly against BGE provides a head-to-head match between the two most dominant open-source retrieval frameworks available.
+
+4. The Structural Alternative: Contriever
+
+Why: Developed by Meta, Contriever avoids traditional sentence-transformer pipelines. It utilizes a continuous pre-training approach optimized specifically for capturing dense, token-level matching structures without losing raw contextual data. This acts as an excellent mid-point between rigid keyword search (BM25) and highly abstract semantic models (BGE).
+
 
 ## 📊 Evaluation Results Summary
 
