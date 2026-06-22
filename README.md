@@ -138,7 +138,7 @@ The Author truncate all metrics strictly to the Top 10 results (`@10`) because i
 │   └── dense.py                    # Vector Index wrappers (FAISS), BM25 Okapi, and RRF Core
 ├── app.py                          # Master runtime pipeline orchestration script
 └── evaluate_metrics.py             # NumPy 2.0 compatible metric evaluation engine
-
+```
 
 🚀 Execution Guide
 1. Installation
@@ -160,6 +160,7 @@ python app.py
 
 3. Step 2: Extract Performance Scorecards
 Run the mathematical validation script to evaluate sorting quality, retrieve counts, and extract performance metrics:
+
 
 ```
 python evaluate_metrics.py
