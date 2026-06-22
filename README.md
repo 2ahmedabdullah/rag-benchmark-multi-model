@@ -1,6 +1,6 @@
 # Zero-Shot Retriever Evaluation: Benchmarking Dense, Approximate, and Hybrid Search on BEIR SciFact
 
-This repository houses an empirical benchmarking framework evaluating five information retrieval (IR) strategies across six state-of-the-art dense embedding models. Engineered specifically for optimizing Retrieval-Augmented Generation (RAG) systems, this pipeline explicitly analyzes the mathematical tradeoffs between search accuracy (precision, recall, positional ranking) and computational hardware costs (raw inference overhead vs. real-time query latencies).
+This repository houses an empirical benchmarking framework evaluating 5 information retrieval (IR) strategies across 6 state-of-the-art dense embedding models. Engineered specifically for optimizing Retrieval-Augmented Generation (RAG) systems, this pipeline explicitly analyzes the mathematical tradeoffs between search accuracy (precision, recall, positional ranking) and computational hardware costs (raw inference overhead vs. real-time query latencies).
 
 ---
 
@@ -29,7 +29,7 @@ The master framework concurrently tracks **25 unique system pipelines** (1 stand
 5) Hybrid (HNSW + BM25) Search
 
 
-## 🎛️ Model Selection Strategy: Which Models and Why?
+## 🎛️ Model Selection Strategy:
 
 The author deliberately selected 6 models representing three distinct architectural approaches to dense retrieval. This allows us to map out a clear performance curve across different model sizes, parameter counts, and fine-tuning paradigms.
 
@@ -60,7 +60,7 @@ The E5 family utilizes a unique training format requiring strict structural pref
 
 ### The Structural Alternative: Contriever
 
-Why: Developed by Meta, Contriever avoids traditional sentence-transformer pipelines. It utilizes a continuous pre-training approach optimized specifically for capturing dense, token-level matching structures without losing raw contextual data. This acts as an excellent mid-point between rigid keyword search (BM25) and highly abstract semantic models (BGE).
+Developed by Meta, Contriever avoids traditional sentence-transformer pipelines. It utilizes a continuous pre-training approach optimized specifically for capturing dense, token-level matching structures without losing raw contextual data. This acts as an excellent mid-point between rigid keyword search (BM25) and highly abstract semantic models (BGE).
 
 
 ## 📊 Evaluation Results Summary
