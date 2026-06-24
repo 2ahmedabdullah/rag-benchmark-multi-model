@@ -4,6 +4,7 @@ import pathlib
 import os
 from beir import util
 
+
 # Choose the dataset (e.g., 'scifact', 'fiqa', 'nfcorpus', 'hotpotqa')
 dataset = "scifact"
 
